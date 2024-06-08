@@ -1,3 +1,4 @@
+const chatController = require("../Controllers/chat.controller");
 const userController = require("../Controllers/user.controller");
 
 module.exports = function(io) {
@@ -11,7 +12,33 @@ module.exports = function(io) {
             // saveUser()로 userName과 socketId를 매개변수로 전달하여 유저정보 저장
             try { 
                 const user = await userController.saveUser(userName, socket.id);
+
+                // system message도 저장(방 입장/퇴장 메세지)
+                const welcomeMessage = {
+                    chat: `${user.name}님이 입장하였습니다.`,
+                    user: { 
+                        id: null,
+                        name: "system",
+                    }
+                }
+                io.emit("message", welcomeMessage);
                 callback({ ok: true, data:user });
+            } catch(error) {
+                callback({ ok: false, error: error.message });
+            }
+        })
+
+        socket.on("sendMessage", async (message, callback) => {
+            try { 
+                // socket.id로 유저를 먼저 찾는다.
+                const user = await userController.checkUser(socket.id);
+                // 가져온 유저정보를 바탕으로 받은 메세지를 저장
+                const newMessage = await chatController.saveChat(message, user);
+
+                // 그 메세지를 접속한 클라이언트에게 모두 전달하기
+                io.emit("message", newMessage);
+    
+                callback({ ok: true });
             } catch(error) {
                 callback({ ok: false, error: error.message });
             }
