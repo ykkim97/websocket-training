@@ -17,3 +17,4 @@
 2. BackEnd
  - npm install
  - .env setting (PORT, DB)
+ - npm start (nodemon index.js)
