@@ -17,14 +17,14 @@ module.exports = function(io) {
                 const user = await userController.saveUser(userName, socket.id);
 
                 // system message도 저장(방 입장/퇴장 메세지)
-                const welcomeMessage = {
-                    chat: `${user.name}님이 입장하였습니다.`,
-                    user: { 
-                        id: null,
-                        name: "system",
-                    }
-                }
-                io.emit("message", welcomeMessage);
+                // const welcomeMessage = {
+                //     chat: `${user.name}님이 입장하였습니다.`,
+                //     user: { 
+                //         id: null,
+                //         name: "system",
+                //     }
+                // }
+                // io.emit("message", welcomeMessage);
                 callback({ ok: true, data:user });
             } catch(error) {
                 callback({ ok: false, error: error.message });
@@ -38,8 +38,7 @@ module.exports = function(io) {
                 // 가져온 유저정보를 바탕으로 받은 메세지를 저장
                 const newMessage = await chatController.saveChat(message, user);
 
-                // 그 메세지를 접속한 클라이언트에게 모두 전달하기
-                io.emit("message", newMessage);
+                io.to(user.room.toString()).emit("message", newMessage);
     
                 callback({ ok: true });
             } catch(error) {
@@ -47,7 +46,40 @@ module.exports = function(io) {
             }
         })
 
-        
+        socket.on("joinRoom", async (roomId, callback) => {
+            try {
+                const user = await userController.checkUser(socket.id);
+                await roomController.joinRoom(roomId, user);
+
+                socket.join(user.room.toString());
+                const welcomeMessage = {
+                    chat: `${user.name} is joined to this room`,
+                    user: { id: null, name: "system" },
+                };
+                io.to(user.room.toString()).emit("message", welcomeMessage);
+                io.emit("rooms", await roomController.getAllRooms());
+                callback({ ok: true });
+            } catch(error) {
+                callback({ ok: false, error: error.message });
+            }
+        })
+
+        socket.on("leaveRoom", async (_, callback) => {
+            try {
+                const user = await userController.checkUser(socket.id);
+                await roomController.leaveRoom(user);
+                const leaveMessage = {
+                    chat: `${user.name} left this room`,
+                    user: { id: null, name: "system" },
+                };
+                socket.broadcast.to(user.room.toString()).emit("message", leaveMessage); // socket.broadcast의 경우 io.to()와 달리,나를 제외한 채팅방에 모든 맴버에게 메세지를 보낸다 
+                io.emit("rooms", await roomController.getAllRooms());
+                socket.leave(user.room.toString()); // join했던 방을 떠남 
+                callback({ ok: true });
+            } catch (error) {
+                callback({ ok: false, message: error.message });
+            }
+        });
 
         // 브라우저를 닫아서 연결이 끊기면 아래 내용 실행됨
         socket.on("disconnect", () => {

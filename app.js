@@ -15,14 +15,14 @@ app.get("/", async (req, res) => {
             room:"js 스터디 단톡방",
             members: [],
         },
-        // {
-        //     root:"학과 단톡방",
-        //     members: [],
-        // },
-        // {
-        //     room: "친구들 단톡방",
-        //     members: [],
-        // },
+        {
+            room:"학과 단톡방",
+            members: [],
+        },
+        {
+            room: "친구들 단톡방",
+            members: [],
+        },
     ])
         .then(() => res.send("ok"))
         .catch((error) => res.send(error));
